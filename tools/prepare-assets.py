@@ -34,7 +34,7 @@ from PIL import Image
 TILES = ["wall_megalith", "floor_stone", "ceiling_rock", "wall_glyph",
          "gold_relief", "alien_panel", "rubble_dirt"]
 CLIPS = ["mus_dread", "sfx_ambience", "sfx_step", "sfx_glyph", "sfx_gate", "sfx_alien"]
-TILE_PX = 512
+TILE_PX = 256   # the renderer works at 256; shipping larger is wasted bytes
 TARGET_LUM = 0.34
 
 
