@@ -27,7 +27,9 @@ const URL_BASE = `http://127.0.0.1:${server.address().port}`;
 let fails = 0;
 const check = (c, m) => { console.log(`  ${c ? "ok  " : "FAIL"}  ${m}`); if (!c) fails++; };
 
-const browser = await chromium.launch();
+// The sandbox ships its own Chromium; use it rather than downloading another.
+const browser = await chromium.launch(
+  process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
 const errors = [];
 page.on("pageerror", e => errors.push(e.message));
