@@ -109,6 +109,7 @@ await shot("07-ending");
 
 // 5 — codex
 await g(() => { window.__g.S.ended = null; window.__g.setPhase("play"); });
+await page.waitForFunction(() => window.__g.phase() === "play");
 await page.keyboard.press("Tab");
 await page.waitForTimeout(120);
 check(await g(() => window.__g.phase() === "codex"), "Tab opens the codex");
