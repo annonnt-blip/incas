@@ -1,6 +1,6 @@
 // Level validation: every gate is a real chokepoint, everything is reachable in the
 // intended order, and no prop is buried in rock. Run: node tools/validate.mjs
-import * as W from "../public/world.js";
+import * as W from "../public/src/world.js";
 
 const { GW, GH, CELL, START, GATES, PHASE, MURALS, PROPS } = W;
 const grid = W.buildGrid();

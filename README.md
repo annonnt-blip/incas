@@ -11,12 +11,12 @@ Built as a browser game with the Higgsfield asset pipeline.
 ```
 public/            the game — this directory is the root of the deployed zip
   index.html       page, HUD and panels
-  game.js          state, input, interaction, objectives, save
-  engine.js        raycast renderer, baked lightmap, billboards
-  world.js         frozen metrics, the authored level, entities, lore wiring
-  sprites.js       procedurally drawn props and glyph marks
-  strings.js       every player-visible string (adding a language is a data change)
-  audio.js         three-bus mix with a limiter
+  src/game.js      state, input, interaction, objectives, save
+  src/engine.js    raycast renderer, baked lightmap, billboards
+  src/world.js     frozen metrics, the authored level, entities, lore wiring
+  src/sprites.js   procedurally drawn props and glyph marks
+  src/strings.js   every player-visible string (adding a language is a data change)
+  src/audio.js     three-bus mix with a limiter
   logic.js         single-player rules stub required at the archive root
   assets/          generated textures and audio (not in git — see below)
 design/
