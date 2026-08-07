@@ -12,10 +12,10 @@ export const TEX = { MEGALITH: 0, FLOOR: 1, CEIL: 2, GLYPH: 3, GOLD: 4, ALIEN: 5
 // attunements. Each carries a distinct SHAPE as well as a colour, so colour is never the
 // only channel a player has to read (accessibility: no colour-only signal).
 export const GLYPH = {
-  NONE:   { id: 0, key: "none",   shape: "flame",    rgb: [1.00, 0.72, 0.38], radius: 6.0 },
-  INTI:   { id: 1, key: "inti",   shape: "chakana",  rgb: [1.00, 0.78, 0.30], radius: 8.5 },
-  QUILLA: { id: 2, key: "quilla", shape: "crescent", rgb: [0.72, 0.84, 1.00], radius: 8.5 },
-  CHASKA: { id: 3, key: "chaska", shape: "star",     rgb: [0.42, 0.95, 1.00], radius: 8.5 },
+  NONE:   { id: 0, key: "none",   shape: "flame",    rgb: [1.00, 0.72, 0.38], radius: 8.0 },
+  INTI:   { id: 1, key: "inti",   shape: "chakana",  rgb: [1.00, 0.78, 0.30], radius: 11.0 },
+  QUILLA: { id: 2, key: "quilla", shape: "crescent", rgb: [0.72, 0.84, 1.00], radius: 11.0 },
+  CHASKA: { id: 3, key: "chaska", shape: "star",     rgb: [0.42, 0.95, 1.00], radius: 11.0 },
 };
 export const GLYPH_BY_ID = [GLYPH.NONE, GLYPH.INTI, GLYPH.QUILLA, GLYPH.CHASKA];
 

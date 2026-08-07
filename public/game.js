@@ -116,8 +116,8 @@ function rebuildWorld() {
   syncProps();
 }
 
-const brazierLight = p => ({ id: "bz" + p.id, x: p.x, z: p.z, y: 1.55, rgb: [1.0, 0.70, 0.34], r: 12.5, i: 1.25 });
-const nodeLight = p => ({ id: "nd" + p.id, x: p.x, z: p.z, y: 1.7, rgb: [0.28, 0.90, 1.0], r: 9.5, i: 0.75 });
+const brazierLight = p => ({ id: "bz" + p.id, x: p.x, z: p.z, y: 1.55, rgb: [1.0, 0.70, 0.34], r: 14.0, i: 1.3 });
+const nodeLight = p => ({ id: "nd" + p.id, x: p.x, z: p.z, y: 1.7, rgb: [0.28, 0.90, 1.0], r: 11.0, i: 0.85 });
 
 function addLight(L) { lights.push(L); renderer.bakeLight(grid, L, +1); }
 function removeLight(id) {
@@ -682,7 +682,7 @@ function render() {
   const low = Math.min(1, S.charge / 18);
   lampObj.radius = g.radius;
   lampObj.rgb = g.rgb;
-  lampObj.power = S.charge > 0 ? 1.05 * flicker * low : 0;
+  lampObj.power = S.charge > 0 ? 1.6 * flicker * low : 0;
   lampObj.phase = S.glyph === GLYPH.CHASKA.id && S.charge > 0;
 
   const bob = Math.sin(S.bob) * 2.2 * (opt.shake ? 1 : 0);

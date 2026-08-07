@@ -26,8 +26,8 @@ Changing anything here invalidates the level layout built on top of it.
 | Lamp drain, lit | 1.05 / s |
 | Attunement switch cost | 4 |
 | Brazier refill | 48 (each brazier gives once at full value, then 18 on re-use) |
-| Lamp radius, unattuned | 6.0 |
-| Lamp radius, attuned | 8.5 |
+| Lamp radius, unattuned | 8.0 |
+| Lamp radius, attuned | 11.0 |
 
 ## Threat (the Watcher)
 

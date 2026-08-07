@@ -29,9 +29,13 @@ export class Renderer {
       const d = i / 4, t = FOG_DENSITY * d;
       this.fog[i] = Math.exp(-t * t);
     }
-    // lamp attenuation lookup, indexed by (distance / radius) × 256
+    // Lamp attenuation, indexed by (distance / radius) × 256. An inverse-square-ish
+    // curve puts most of its falloff in the first few units, which on a first-person
+    // camera is all off-screen — the nearest visible floor is already two eye-heights
+    // out. A quadratic window instead holds the near and mid range readable and only
+    // drops off approaching the radius.
     this.lampLut = new Float32Array(257);
-    for (let i = 0; i <= 256; i++) { const t = 1 - i / 256; this.lampLut[i] = t * t; }
+    for (let i = 0; i <= 256; i++) { const u = i / 256; this.lampLut[i] = 1 - u * u; }
   }
 
   setSize(W, H) {
@@ -84,7 +88,7 @@ export class Renderer {
           const dy = ly - L.y;
           const d = Math.sqrt(flat * flat + dy * dy);
           if (d >= r) continue;
-          const t = 1 - d * inv, a = t * t;
+          const u = d * inv, a = 1 - u * u;   // same curve as the lamp, for one pool of light
           const m = layer ? this.highMap : this.lowMap;
           m[o] += cr * a; m[o + 1] += cg * a; m[o + 2] += cb * a;
         }
@@ -124,7 +128,7 @@ export class Renderer {
     const lampR = lamp.radius, lampInv = 256 / lampR;
     const lr = lamp.rgb[0] * lamp.power, lg = lamp.rgb[1] * lamp.power, lb = lamp.rgb[2] * lamp.power;
     const fog = this.fog, lampLut = this.lampLut;
-    const AMB = 0.035;
+    const AMB = 0.05;
 
     for (let x = 0; x < W; x++) {
       const camX = 2 * x / W - 1;
