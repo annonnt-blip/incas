@@ -209,7 +209,8 @@ addEventListener("blur", () => { held.clear(); });
 // keyboard's `held` means an idle controller erases what the keyboard is holding —
 // with a pad plugged in, that silently stops the player walking.
 const padHeld = new Set();
-const isHeld = c => held.has(c) || padHeld.has(c);
+const uiHeld = new Set();      // on-screen buttons currently pressed
+const isHeld = c => held.has(c) || padHeld.has(c) || uiHeld.has(c);
 
 const DPAD = { 12: "up", 13: "down", 14: "left", 15: "right" };
 
@@ -274,6 +275,26 @@ function releaseStick() {
   stick.id = null; stick.x = stick.y = 0;
   $("stick").style.opacity = 0;
   $("stickN").style.transform = "";
+}
+
+function bindDpad() {
+  for (const b of document.querySelectorAll("#dpad button")) {
+    const cmd = b.dataset.cmd;
+    const press = e => {
+      uiHeld.add(cmd);
+      try { b.setPointerCapture(e.pointerId); } catch (err) { /* capture is a nicety */ }
+      e.preventDefault();
+    };
+    const release = () => uiHeld.delete(cmd);
+    b.addEventListener("pointerdown", press);
+    b.addEventListener("pointerup", release);
+    b.addEventListener("pointercancel", release);
+    b.addEventListener("lostpointercapture", release);
+    b.addEventListener("contextmenu", e => e.preventDefault());
+  }
+  // a pointer released anywhere must not leave a direction stuck on
+  addEventListener("pointerup", () => uiHeld.clear());
+  addEventListener("blur", () => uiHeld.clear());
 }
 
 function bindPointerControls() {
@@ -810,7 +831,7 @@ function updateHud() {
   const onScreenNow = $("touchsurf").style.display === "block";
   if (onScreenNow !== showOnScreen() && phase === "play") setPhase("play");
   // Say what to do rather than letting silence read as a broken game.
-  const hint = (!isTouch && showOnScreen()) ? T("hud.drag")
+  const hint = (!isTouch && showOnScreen()) ? T("hud.buttons")
     : (!isTouch && !document.hasFocus()) ? T("hud.focus")
     : "";
   $("focusHint").textContent = hint;
@@ -828,7 +849,9 @@ function setPhase(p) {
   const onScreen = p === "play" && showOnScreen();
   $("touchsurf").style.display = onScreen ? "block" : "none";
   $("touchbtns").style.display = onScreen ? "flex" : "none";
-  if (!onScreen) releaseStick();
+  // The stick suits a thumb; a mouse gets buttons it can click and hold.
+  $("dpad").className = (onScreen && !isTouch) ? "show" : "";
+  if (!onScreen) { releaseStick(); uiHeld.clear(); }
   if (p === "play") {
     audio.resume(); audio.startBeds();
     // An embedded frame does not get key events until something inside it is focused.
@@ -1077,6 +1100,7 @@ async function boot() {
   S = freshState();
   resize();
   bindPointerControls();
+  bindDpad();
   if (dev) $("dev").style.display = "block";
 
   const bar = $("loadBar");

@@ -167,6 +167,22 @@ await g(() => { navigator.getGamepads = () => [null, null, null, null]; });
   const to = await mp.evaluate(() => ({ x: window.__g.S.x, z: window.__g.S.z }));
   const dragged = Math.hypot(to.x - from.x, to.z - from.z);
   check(dragged > 0.8, `dragging the left side walks with no keyboard at all (moved ${dragged.toFixed(2)} units)`);
+  // the D-pad is the unmissable route: click and hold an arrow
+  check(await mp.evaluate(() => getComputedStyle(document.getElementById("dpad")).display === "grid"),
+    "the movement pad is shown on a pointer device with no keyboard");
+  const padFrom = await mp.evaluate(() => ({ x: window.__g.S.x, z: window.__g.S.z }));
+  const box = await mp.locator('#dpad [data-cmd="up"]').boundingBox();
+  await mp.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await mp.mouse.down();
+  await mp.waitForTimeout(700);
+  await mp.mouse.up();
+  const padTo = await mp.evaluate(() => ({ x: window.__g.S.x, z: window.__g.S.z }));
+  const padMoved = Math.hypot(padTo.x - padFrom.x, padTo.z - padFrom.z);
+  check(padMoved > 0.8, `holding the forward arrow walks (moved ${padMoved.toFixed(2)} units)`);
+  await mp.waitForTimeout(200);
+  const after = await mp.evaluate(() => ({ x: window.__g.S.x, z: window.__g.S.z }));
+  check(Math.hypot(after.x - padTo.x, after.z - padTo.z) < 0.2, "releasing the arrow stops the player");
+
   // and once a movement key proves the keyboard works, the overlay gets out of the way
   await mp.keyboard.press("KeyW");
   await mp.waitForTimeout(300);
