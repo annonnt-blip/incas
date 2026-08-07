@@ -204,22 +204,30 @@ addEventListener("keydown", e => {
 addEventListener("keyup", e => { const c = BIND[e.code]; if (c) held.delete(c); });
 addEventListener("blur", () => { held.clear(); });
 
+// Gamepad state is kept in its own set and merged at read time. Writing it into the
+// keyboard's `held` means an idle controller erases what the keyboard is holding —
+// with a pad plugged in, that silently stops the player walking.
+const padHeld = new Set();
+const isHeld = c => held.has(c) || padHeld.has(c);
+
+const DPAD = { 12: "up", 13: "down", 14: "left", 15: "right" };
+
 function pollPad() {
   const pads = navigator.getGamepads ? navigator.getGamepads() : [];
   let ax = 0, az = 0, lx = 0, ly = 0;
+  padHeld.clear();
   for (const gp of pads) {
     if (!gp) continue;
     const dz = v => Math.abs(v) < 0.18 ? 0 : v;
     ax += dz(gp.axes[0] || 0); az += dz(gp.axes[1] || 0);
     lx += dz(gp.axes[2] || 0); ly += dz(gp.axes[3] || 0);
     gp.buttons.forEach((b, i) => {
-      const c = PAD[i]; if (!c) return;
+      const c = PAD[i] || DPAD[i];
+      if (!c) return;
       if (b.pressed && !padPrev[i]) edge.add(c);
-      if (b.pressed) held.add(c); else held.delete(c);
+      if (b.pressed) padHeld.add(c);
       padPrev[i] = b.pressed;
     });
-    if (gp.buttons[12] && gp.buttons[12].pressed) held.add("up"); else if (az === 0) held.delete("up");
-    if (gp.buttons[13] && gp.buttons[13].pressed) held.add("down");
   }
   return { ax, az, lx, ly };
 }
@@ -624,15 +632,15 @@ function update(dt) {
 
   // move
   let fx = 0, fz = 0;
-  if (held.has("up")) fz += 1;
-  if (held.has("down")) fz -= 1;
-  if (held.has("left")) fx -= 1;
-  if (held.has("right")) fx += 1;
+  if (isHeld("up")) fz += 1;
+  if (isHeld("down")) fz -= 1;
+  if (isHeld("left")) fx -= 1;
+  if (isHeld("right")) fx += 1;
   fx += pad.ax; fz -= pad.az;
   fx += stick.x; fz -= stick.y;
   const mag = Math.hypot(fx, fz);
   if (mag > 1) { fx /= mag; fz /= mag; }
-  const speed = held.has("sprint") ? SPRINT : WALK;
+  const speed = isHeld("sprint") ? SPRINT : WALK;
   const dirX = Math.cos(S.ang), dirZ = Math.sin(S.ang);
   const dx = (dirX * fz - dirZ * fx) * speed * dt;
   const dz = (dirZ * fz + dirX * fx) * speed * dt;
@@ -790,6 +798,10 @@ function updateHud() {
   $("prompt").style.opacity = p ? 1 : 0;
   $("objective").textContent = T(objectiveKey());
   $("reticle").style.opacity = t ? 1 : 0.35;
+  // Say so plainly rather than letting the player conclude the game is broken.
+  const unfocused = !isTouch && !document.hasFocus();
+  $("focusHint").textContent = T("hud.focus");
+  $("focusHint").className = unfocused ? "show" : "";
 }
 
 // ---------------------------------------------------------------------------
@@ -802,7 +814,11 @@ function setPhase(p) {
   $("hud").classList.toggle("open", p === "play");
   $("touchsurf").style.display = (p === "play" && isTouch) ? "block" : "none";
   $("touchbtns").style.display = (p === "play" && isTouch) ? "flex" : "none";
-  if (p === "play") { audio.resume(); audio.startBeds(); }
+  if (p === "play") {
+    audio.resume(); audio.startBeds();
+    // An embedded frame does not get key events until something inside it is focused.
+    try { canvas.focus({ preventScroll: true }); } catch (e) { canvas.focus(); }
+  }
   if (p !== "play" && document.pointerLockElement === canvas) document.exitPointerLock();
 }
 

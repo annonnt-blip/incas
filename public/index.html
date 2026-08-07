@@ -130,10 +130,16 @@
   #touchbtns button { width: 72px; height: 72px; border-radius: 50%; font-size: 11px; letter-spacing: .08em;
     background: rgba(10,12,10,.6); font-variant: small-caps; }
   #btnUse { width: 92px !important; height: 92px !important; border-color: var(--gold) !important; }
+  #focusHint { position: absolute; left: 50%; top: 18%; transform: translateX(-50%);
+    padding: 9px 16px; background: rgba(8,10,8,.85); border: 1px solid var(--gold);
+    color: var(--paper); font-size: calc(13px * var(--ts)); letter-spacing: .05em;
+    border-radius: 2px; display: none; }
+  #focusHint.show { display: block; }
+  canvas#c:focus { outline: none; }
   #dev { position: fixed; left: 6px; top: 6px; z-index: 30; color: #7f7; font: 11px ui-monospace, monospace; display: none; }
 </style>
 
-<canvas id="c"></canvas>
+<canvas id="c" tabindex="0"></canvas>
 <div id="vig"></div>
 <div id="dev"></div>
 
@@ -148,6 +154,7 @@
   <div id="chips"></div>
   <div id="objWrap"><div id="objLabel"></div><div id="objective"></div></div>
   <div id="toast"></div>
+  <div id="focusHint"></div>
 </div>
 
 <div id="touchsurf"></div>

@@ -64,6 +64,7 @@ const en = {
   "hud.lamp": "Lamp",
   "hud.objective": "Now",
   "hud.codexHint": "Tab — codex",
+  "hud.focus": "Click the game to use the keyboard",
   "hud.newEntry": "Codex updated",
   "hud.glyphLearned": "New light learned",
 

@@ -121,6 +121,34 @@ check(await g(() => document.getElementById("codexBody").textContent.includes("s
 await shot("08-codex");
 await page.click("#codexClose");
 
+// 5b — the player can actually walk, including with a gamepad plugged in
+console.log("\n= movement =");
+await g(() => { window.__g.goto(21, 20); window.__g.face(21, 14); window.__g.S.charge = 90; });
+await page.waitForTimeout(120);
+await page.click("#c", { position: { x: 400, y: 300 } }).catch(() => {});
+const walk = async (label) => {
+  const a = await g(() => ({ x: window.__g.S.x, z: window.__g.S.z }));
+  await page.keyboard.down("KeyW");
+  await page.waitForTimeout(700);
+  await page.keyboard.up("KeyW");
+  const b2 = await g(() => ({ x: window.__g.S.x, z: window.__g.S.z }));
+  const d = Math.hypot(b2.x - a.x, b2.z - a.z);
+  check(d > 0.8, `${label} (moved ${d.toFixed(2)} units)`);
+  return d;
+};
+await walk("W walks forward");
+
+// An idle controller used to erase the keyboard's held keys every frame.
+await g(() => {
+  const pad = { id: "fake", connected: true, axes: [0, 0, 0, 0],
+    buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })) };
+  navigator.getGamepads = () => [pad, null, null, null];
+});
+await g(() => { window.__g.goto(21, 20); window.__g.face(21, 14); });
+await page.waitForTimeout(120);
+await walk("W still walks with a gamepad connected");
+await g(() => { navigator.getGamepads = () => [null, null, null, null]; });
+
 // 6 — the lamp economy and the Watcher
 console.log("\n= economy =");
 await g(() => { window.__g.goto(20, 16); window.__g.S.charge = 0; });
