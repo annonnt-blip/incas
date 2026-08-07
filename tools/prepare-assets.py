@@ -8,7 +8,7 @@ Run inside the Higgsfield sandbox, where the seam-fix pipeline and ffmpeg live:
 
 Steps, in order:
 
-1. Tiles are resized to 512 and made mathematically seamless (Moisan periodic
+1. Tiles are resized to the renderer's working size and made mathematically seamless (Moisan periodic
    decomposition plus a minimal-error cut) by the bundled pipeline script.
 2. Tile luminance is lifted to a target mean by a per-image gamma. The generated
    stone is authentically dark — mean luminance 0.14-0.24 — but the renderer
