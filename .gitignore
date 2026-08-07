@@ -1,0 +1,7 @@
+node_modules
+tools/shots/
+raw/
+dist/
+# Art and audio are generated through the Higgsfield pipeline and assembled at package
+# time (see README). `node tools/placeholders.mjs` writes local stand-ins for development.
+public/assets/

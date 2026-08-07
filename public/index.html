@@ -1,0 +1,238 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0a0b09">
+<title>Ashes of the Sun Gate</title>
+<link rel="icon" href="./assets/icon_app.png">
+<style>
+  :root { --ts: 1; --gold: #d8ab5e; --cyan: #6fe0f5; --paper: #e6dcc6; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #05060a; color: var(--paper);
+    font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased; user-select: none; -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent; }
+  canvas#c { display: block; width: 100%; height: 100%; image-rendering: auto; }
+
+  /* the buried-tomb vignette sits over the render, never inside it */
+  #vig { position: fixed; inset: 0; pointer-events: none; z-index: 2;
+    background:
+      radial-gradient(ellipse 78% 70% at 50% 52%, rgba(0,0,0,0) 42%, rgba(0,0,0,.55) 78%, rgba(0,0,0,.88) 100%),
+      linear-gradient(180deg, rgba(4,6,4,.42), rgba(0,0,0,0) 26%, rgba(0,0,0,0) 72%, rgba(4,6,4,.5)); }
+
+  .layer { position: fixed; inset: 0; z-index: 6; display: none; }
+  .layer.open { display: flex; }
+  #hud { position: fixed; inset: 0; z-index: 4; pointer-events: none; display: none; }
+  #hud.open { display: block; }
+
+  /* ---------- HUD ---------- */
+  #reticle { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px;
+    border-radius: 50%; background: rgba(230,220,198,.75); box-shadow: 0 0 4px rgba(0,0,0,.9); transition: opacity .18s; }
+  #prompt { position: absolute; left: 50%; top: calc(50% + 26px); transform: translateX(-50%);
+    font-size: calc(15px * var(--ts)); letter-spacing: .09em; text-shadow: 0 2px 8px #000, 0 0 22px #000;
+    opacity: 0; transition: opacity .14s; white-space: nowrap; font-variant: small-caps; }
+  #lampWrap { position: absolute; left: max(18px, env(safe-area-inset-left)); bottom: max(18px, env(safe-area-inset-bottom)); width: min(210px, 34vw); }
+  #hudLampLabel { font-size: calc(10px * var(--ts)); letter-spacing: .22em; text-transform: uppercase; opacity: .55; }
+  #lampBar { position: relative; height: 7px; margin-top: 5px; background: rgba(230,220,198,.12);
+    border: 1px solid rgba(230,220,198,.22); overflow: hidden; }
+  #lampFill { position: absolute; inset: 0; transform-origin: left center; transition: transform .18s linear;
+    background: linear-gradient(90deg, #7d4d16, var(--gold)); }
+  #lampNum { position: absolute; right: 0; top: -2px; font-size: calc(11px * var(--ts)); opacity: .6; font-variant-numeric: tabular-nums; }
+  #lampWrap.low #lampFill { background: linear-gradient(90deg, #6d1f14, #d8563e); animation: pulse .9s infinite; }
+  @keyframes pulse { 50% { opacity: .45; } }
+
+  #chips { position: absolute; left: max(18px, env(safe-area-inset-left)); bottom: calc(max(18px, env(safe-area-inset-bottom)) + 46px);
+    display: flex; gap: 7px; pointer-events: auto; }
+  .chip { width: 40px; height: 40px; padding: 0; position: relative; cursor: pointer;
+    background: rgba(10,12,10,.62); border: 1px solid rgba(230,220,198,.2); border-radius: 3px;
+    display: grid; place-items: center; transition: border-color .15s, background .15s; }
+  .chip.on { border-color: var(--gold); background: rgba(60,42,14,.6); box-shadow: 0 0 14px rgba(216,171,94,.22); }
+  .chip span { position: absolute; right: 3px; bottom: 1px; font-size: 9px; opacity: .5; color: var(--paper); }
+  .chip canvas { display: block; }
+
+  #objWrap { position: absolute; right: max(18px, env(safe-area-inset-right)); top: max(16px, env(safe-area-inset-top));
+    max-width: min(330px, 46vw); text-align: right; }
+  #objLabel { font-size: calc(9.5px * var(--ts)); letter-spacing: .24em; text-transform: uppercase; opacity: .45; }
+  #objective { font-size: calc(13px * var(--ts)); line-height: 1.45; opacity: .85; text-shadow: 0 2px 10px #000; }
+
+  #toast { position: absolute; left: 50%; bottom: 13%; transform: translateX(-50%) translateY(10px);
+    max-width: min(620px, 86vw); padding: 11px 17px; text-align: center; opacity: 0; pointer-events: none;
+    background: rgba(8,10,8,.78); border-left: 2px solid var(--gold); font-size: calc(13.5px * var(--ts));
+    line-height: 1.5; transition: opacity .3s, transform .3s; backdrop-filter: blur(3px); }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.good { border-color: var(--gold); }
+  #toast.bad { border-color: #c4533a; }
+  #toast.alien { border-color: var(--cyan); }
+
+  /* ---------- panels ---------- */
+  .scrim { position: absolute; inset: 0; background: rgba(3,4,3,.86); backdrop-filter: blur(6px); }
+  .panel { position: relative; margin: auto; width: min(720px, 92vw); max-height: 88vh; overflow-y: auto;
+    padding: clamp(20px, 4vw, 40px); background: rgba(9,10,9,.94);
+    border: 1px solid rgba(216,171,94,.24); box-shadow: 0 30px 90px rgba(0,0,0,.8); }
+  .panel h2 { margin: 0 0 6px; font-size: calc(23px * var(--ts)); letter-spacing: .12em; font-weight: 500;
+    color: var(--gold); font-variant: small-caps; }
+  .panel p { line-height: 1.65; font-size: calc(14.5px * var(--ts)); opacity: .84; }
+  button { font: inherit; color: var(--paper); background: rgba(216,171,94,.07);
+    border: 1px solid rgba(216,171,94,.32); padding: 9px 16px; cursor: pointer; letter-spacing: .06em;
+    transition: background .15s, border-color .15s; border-radius: 2px; }
+  button:hover { background: rgba(216,171,94,.19); border-color: var(--gold); }
+  button.big { padding: 13px 26px; font-size: calc(15px * var(--ts)); font-variant: small-caps; letter-spacing: .1em; }
+  input[type=range] { width: 150px; accent-color: var(--gold); }
+  select { font: inherit; background: #14150f; color: var(--paper); border: 1px solid rgba(216,171,94,.32); padding: 5px; }
+  .crow { display: flex; justify-content: space-between; align-items: center; gap: 18px;
+    padding: 9px 0; border-bottom: 1px solid rgba(230,220,198,.08); font-size: calc(14px * var(--ts)); }
+  .crow b { font-weight: 500; opacity: .72; text-align: right; }
+  .col { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
+  .sub { display: none; }
+  .sub.open { display: block; }
+  .dim { opacity: .45; }
+
+  /* ---------- menu ---------- */
+  #menu .scrim { background: #05060a; }
+  #menuArt { position: absolute; inset: 0; background: center/cover no-repeat; opacity: .5;
+    mask-image: radial-gradient(ellipse 70% 66% at 50% 46%, #000 30%, transparent 76%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 66% at 50% 46%, #000 30%, transparent 76%); }
+  #menu .panel { background: rgba(6,7,6,.74); backdrop-filter: blur(2px); text-align: center; width: min(620px, 92vw); }
+  #title { font-size: calc(34px * var(--ts)); letter-spacing: .2em; color: var(--gold); margin: 0;
+    font-variant: small-caps; text-shadow: 0 0 40px rgba(216,171,94,.3); }
+  #subtitle { margin: 12px auto 0; max-width: 44ch; }
+  #menu .col { align-items: center; }
+  #menu .col button { width: min(280px, 74vw); }
+  #credit { margin-top: 26px; font-size: 11px; letter-spacing: .16em; opacity: .34; text-transform: uppercase; }
+
+  /* ---------- reader / codex ---------- */
+  #readerBody, .eb { white-space: pre-wrap; line-height: 1.72; font-size: calc(15px * var(--ts));
+    font-family: ui-serif, Georgia, "Times New Roman", serif; }
+  #reader[data-kind=mural] #readerBody { letter-spacing: .06em; color: #cdd9e8; }
+  #reader[data-kind=glyph] #readerBody { color: #f0dcb0; }
+  #codexBody h3 { color: var(--gold); font-size: calc(13px * var(--ts)); letter-spacing: .16em;
+    text-transform: uppercase; font-weight: 500; margin: 26px 0 8px; opacity: .8; }
+  .entry { padding: 11px 0 13px; border-bottom: 1px solid rgba(230,220,198,.08); }
+  .en { font-size: calc(14px * var(--ts)); color: var(--paper); margin-bottom: 5px; }
+  .eb { opacity: .72; font-size: calc(13.5px * var(--ts)); }
+  #endStats { margin-top: 18px; font-size: calc(12px * var(--ts)); letter-spacing: .1em; opacity: .5; }
+  #endBtns { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; justify-content: center; }
+
+  /* ---------- loading ---------- */
+  #loading { display: flex; z-index: 20; background: #05060a; }
+  #loading:not(.open) { display: none; }
+  #loadWrap { margin: auto; text-align: center; }
+  #loadMsg { font-size: 12px; letter-spacing: .3em; text-transform: uppercase; opacity: .5; margin-bottom: 14px; }
+  #loadTrack { width: min(300px, 60vw); height: 2px; background: rgba(230,220,198,.14); overflow: hidden; }
+  #loadBar { height: 100%; background: var(--gold); transform: scaleX(0); transform-origin: left; transition: transform .3s; }
+
+  /* ---------- touch ---------- */
+  #touchsurf { position: fixed; inset: 0; z-index: 3; display: none; touch-action: none; }
+  #stick { position: fixed; width: 116px; height: 116px; margin: -58px 0 0 -58px; border-radius: 50%;
+    border: 1px solid rgba(230,220,198,.2); opacity: 0; z-index: 5; pointer-events: none; transition: opacity .15s; }
+  #stickN { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px;
+    border-radius: 50%; background: rgba(230,220,198,.2); }
+  #touchbtns { position: fixed; right: max(16px, env(safe-area-inset-right)); bottom: max(20px, env(safe-area-inset-bottom));
+    z-index: 5; display: none; flex-direction: column; gap: 12px; align-items: flex-end; }
+  #touchbtns button { width: 72px; height: 72px; border-radius: 50%; font-size: 11px; letter-spacing: .08em;
+    background: rgba(10,12,10,.6); font-variant: small-caps; }
+  #btnUse { width: 92px !important; height: 92px !important; border-color: var(--gold) !important; }
+  #dev { position: fixed; left: 6px; top: 6px; z-index: 30; color: #7f7; font: 11px ui-monospace, monospace; display: none; }
+</style>
+
+<canvas id="c"></canvas>
+<div id="vig"></div>
+<div id="dev"></div>
+
+<div id="hud">
+  <div id="reticle"></div>
+  <div id="prompt"></div>
+  <div id="lampWrap">
+    <div id="hudLampLabel"></div>
+    <div id="lampBar"><div id="lampFill"></div></div>
+    <div id="lampNum"></div>
+  </div>
+  <div id="chips"></div>
+  <div id="objWrap"><div id="objLabel"></div><div id="objective"></div></div>
+  <div id="toast"></div>
+</div>
+
+<div id="touchsurf"></div>
+<div id="stick"><div id="stickN"></div></div>
+<div id="touchbtns">
+  <button id="btnPause">II</button>
+  <button id="btnCodex">Codex</button>
+  <button id="btnUse">Inspect</button>
+</div>
+
+<div class="layer open" id="loading">
+  <div id="loadWrap">
+    <div id="loadMsg"></div>
+    <div id="loadTrack"><div id="loadBar"></div></div>
+  </div>
+</div>
+
+<div class="layer" id="menu">
+  <div class="scrim"></div>
+  <div id="menuArt"></div>
+  <div class="panel">
+    <div class="sub open" id="mainPanel">
+      <h2 id="title"></h2>
+      <p id="subtitle"></p>
+      <div class="col">
+        <button class="big" id="btnStart"></button>
+        <button class="big" id="btnContinue"></button>
+        <button id="btnControls"></button>
+        <button id="btnOptions"></button>
+      </div>
+      <div id="credit"></div>
+    </div>
+    <div class="sub" id="ctrlPanel">
+      <h2 id="ctrlTitle"></h2>
+      <div id="ctrlRows"></div>
+      <p id="ctrlHint" class="dim" style="margin-top:18px"></p>
+      <div class="col"><button class="backBtn">Back</button></div>
+    </div>
+    <div class="sub" id="optPanel">
+      <h2 id="optTitle"></h2>
+      <div id="optRows"></div>
+      <div class="col"><button class="backBtn">Back</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="layer" id="reader">
+  <div class="scrim"></div>
+  <div class="panel">
+    <h2 id="readerTitle"></h2>
+    <div id="readerBody"></div>
+    <div class="col"><button id="readerClose"></button></div>
+  </div>
+</div>
+
+<div class="layer" id="codex">
+  <div class="scrim"></div>
+  <div class="panel">
+    <h2 id="codexTitle"></h2>
+    <div id="codexBody"></div>
+    <div class="col"><button id="codexClose"></button></div>
+  </div>
+</div>
+
+<div class="layer" id="pause">
+  <div class="scrim"></div>
+  <div class="panel" style="text-align:center">
+    <h2 id="pauseTitle"></h2>
+    <div class="col" style="align-items:center">
+      <button class="big" id="btnResume"></button>
+      <button id="btnRestart"></button>
+      <button id="btnQuit"></button>
+    </div>
+  </div>
+</div>
+
+<div class="layer" id="ending">
+  <div class="scrim"></div>
+  <div class="panel" style="text-align:center">
+    <h2 id="endTitle"></h2>
+    <div id="endBody" style="white-space:pre-wrap;line-height:1.75;font-family:ui-serif,Georgia,serif;font-size:calc(15px * var(--ts));opacity:.88;text-align:left"></div>
+    <div id="endStats"></div>
+    <div id="endBtns"></div>
+  </div>
+</div>
+
+<script type="module" src="./game.js"></script>
+<script>document.getElementById("menuArt").style.backgroundImage = "url('./assets/title_art.png')";</script>

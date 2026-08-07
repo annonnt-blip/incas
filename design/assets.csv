@@ -1,0 +1,22 @@
+id,role,type,description,size/ratio,style line ref,source
+wall_megalith,tiling material on all corridor and chamber walls (zones 1-2),tile,damp Inca polygonal megalithic wall of tightly fitted andesite blocks with mortarless seams and moss in the joints,1:1 1k,STYLE FORMULA v1 blocks 1-5,generate
+floor_stone,tiling material on all walkable floors,tile,worn wet Inca flagstone floor with fine grit dust and shallow standing water in the joints,1:1 1k,STYLE FORMULA v1 blocks 1-5,generate
+ceiling_rock,tiling material on all ceilings,tile,rough chisel-hewn bedrock ceiling with tool marks and mineral drip stains,1:1 1k,STYLE FORMULA v1 blocks 1-5,generate
+wall_glyph,tiling material on gate frames and mural walls; the readable-lore surface,tile,carved Inca stone relief panel covered in geometric chakana and terrace glyph bands,1:1 1k,STYLE FORMULA v1 blocks 1-5,generate
+gold_relief,tiling material on attunement gates and shrine faces; the warm interactive signal surface,tile,tarnished hammered gold plate with an embossed Inca sun disc and radial ray motif,1:1 1k,STYLE FORMULA v1 blocks 1-5,generate
+alien_panel,tiling material on the buried alien machine hull in zones 3-4; the cold reveal surface,tile,seamless dark alien alloy hull panel with recessed circuit channels lit by cold cyan energy,1:1 1k,STYLE FORMULA v1 blocks 1-5,generate
+rubble_dirt,tiling material on collapsed-section floors and the entrance shaft,tile,packed dirt and shattered stone rubble with dry dust and small pebbles,1:1 1k,STYLE FORMULA v1 blocks 1-5,generate
+title_art,menu background image and the deployed game thumbnail / OG image,background,a torchlit Inca megalithic corridor ending in a half-buried alien machine wall glowing cold cyan,16:9 1k,STYLE FORMULA v1 blocks 1-5,generate
+icon_app,square favicon and marketplace catalog icon,ui,an Inca chakana cross of tarnished gold with a cold cyan alien glow burning inside its center,1:1 1k,STYLE FORMULA v1 blocks 1-5,generate
+mus_dread,looping background music bed for the whole ruin,music,dark ambient buried-tomb dread with low drones sparse hand-drum pulses and distant bone flute,30s,STYLE FORMULA v1 block 4,generate
+sfx_ambience,looping room tone under everything,sfx,deep cave air drone with slow water drips and faint distant stone groans,8s,STYLE FORMULA v1 block 4,generate
+sfx_step,footstep one-shot pitched randomly per step,sfx,a single boot footstep on wet gritty stone in a large echoing chamber,1s,STYLE FORMULA v1 block 4,generate
+sfx_glyph,plays when a glyph is learned or an attunement is switched,sfx,a warm resonant stone chime ringing out and decaying in a stone chamber,2s,STYLE FORMULA v1 block 4,generate
+sfx_gate,plays when an attunement gate opens,sfx,a massive stone slab grinding and rumbling as it slides open,3s,STYLE FORMULA v1 block 4,generate
+sfx_alien,plays on alien machinery waking and at the core awakening,sfx,alien machinery powering up with a rising harmonic hum and digital shimmer,3s,STYLE FORMULA v1 block 4,generate
+spr_brazier,billboard prop for every brazier; unlit and lit variants,procedural,stone offering bowl on a low pedestal with a warm flame plume when lit,96x144 px,STYLE FORMULA v1 blocks 1-4,procedural
+spr_stele,billboard prop for the three glyph steles,procedural,upright carved andesite slab whose glyph face lights when the light is learned,96x192 px,STYLE FORMULA v1 blocks 1-4,procedural
+spr_relic,billboard prop for the eight recoverable relics,procedural,a small tarnished gold object resting on the floor with a faint rim glow,64x64 px,STYLE FORMULA v1 blocks 1-4,procedural
+spr_node,billboard prop for the alien resonance nodes,procedural,a floating dark alloy orb ringed by cold cyan energy bands,96x96 px,STYLE FORMULA v1 blocks 1-4,procedural
+spr_core,billboard prop for the engine socket in the final chamber,procedural,a tall alien alloy pillar with a hand-sized opening burning cold cyan,192x224 px,STYLE FORMULA v1 blocks 1-4,procedural
+ui_glyphs,HUD attunement chips and codex icons; each light also carries a distinct shape,procedural,stepped chakana cross crescent moon and eight-point star drawn as flat vector marks,48x48 px each,STYLE FORMULA v1 block 3,procedural
