@@ -93,3 +93,20 @@ thumbnail  .../hf_20260807_160603_c642f92f-5f1e-48ac-8b76-6cd9fc432483.png   (16
 favicon    .../hf_20260807_160603_22c6882b-9fa3-4872-8797-34a98677b374.png   (1:1)
 source     the archive URL above
 ```
+
+## The self-contained build
+
+Some hosts take exactly one file and allow no network requests. `tools/bundle-artifact.mjs`
+inlines every module into a single HTML page and sets `window.__ASG_PROCEDURAL__`, which
+switches the game to `src/procgen.js` and `src/synth.js` — the seven tiles drawn in code
+(seamless by construction: the noise lattice wraps and cell distances are measured on a
+torus) and the six clips synthesised into buffers.
+
+```
+node tools/bundle-artifact.mjs
+ASG_ROOT=$PWD/dist/artifact ASG_INDEX=ashes-of-the-sun-gate.html node tools/smoke.mjs
+```
+
+It is the same game, level and lighting model; only the art and audio differ. The
+generated stone and music ship in the zip build. The same fallback runs if a download
+fails, so a missing file degrades instead of leaving a black room.

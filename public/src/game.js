@@ -2,7 +2,13 @@ import { T, setLang, LANGS } from "./strings.js";
 import { Renderer } from "./engine.js";
 import { buildSprites, drawGlyphMark, PAL } from "./sprites.js";
 import { Audio } from "./audio.js";
+import { makeTextures, makeTitleArt } from "./procgen.js";
 import * as W from "./world.js";
+
+// Builds that cannot carry image and audio files (the self-contained artifact) set this
+// flag and everything is generated in code instead. A failed download falls back the
+// same way, so a missing file degrades instead of shipping a black room.
+const PROCEDURAL = !!window.__ASG_PROCEDURAL__;
 
 const {
   CELL, EYE_H, GW, GH, TEX, GLYPH, GLYPH_BY_ID,
@@ -20,11 +26,24 @@ const STEP = 1000 / 60;
 // ---------------------------------------------------------------------------
 // options
 // ---------------------------------------------------------------------------
+// Storage can be denied outright (embedded frames, private modes); the game must still run.
+function readStore(key) {
+  try { return localStorage.getItem(key); } catch (e) { return null; }
+}
+function writeStore(key, value) {
+  try { localStorage.setItem(key, value); } catch (e) { /* nothing to save to */ }
+}
+function clearStore(key) {
+  try { localStorage.removeItem(key); } catch (e) { /* nothing to clear */ }
+}
+
+let stored = {};
+try { stored = JSON.parse(readStore(OPT_KEY) || "{}"); } catch (e) { stored = {}; }
 const opt = Object.assign({
   sens: 1, invertY: false, textScale: 1, shake: true, flash: true, grain: true,
   quality: 1, music: 1, sfx: 1, lang: "en",
-}, JSON.parse(localStorage.getItem(OPT_KEY) || "{}"));
-function saveOpt() { localStorage.setItem(OPT_KEY, JSON.stringify(opt)); }
+}, stored);
+function saveOpt() { writeStore(OPT_KEY, JSON.stringify(opt)); }
 
 // ---------------------------------------------------------------------------
 // assets
@@ -205,17 +224,30 @@ function pollPad() {
   return { ax, az, lx, ly };
 }
 
-// mouse look with pointer lock
+// Mouse look. Pointer lock is preferred, but it is unavailable in some embedded frames,
+// so dragging with the button held is always accepted as a fallback.
 let mouseDX = 0, mouseDY = 0;
+let locking = false, dragging = false;
 const canvas = $("c");
-canvas.addEventListener("click", () => {
-  if (S && phase === "play" && !isTouch) canvas.requestPointerLock();
+canvas.addEventListener("mousedown", e => {
+  if (!S || phase !== "play" || isTouch) return;
+  if (document.pointerLockElement !== canvas && canvas.requestPointerLock) {
+    locking = true;
+    try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => { locking = false; }); }
+    catch (err) { locking = false; }
+  }
+  dragging = true;
+  e.preventDefault();
 });
+addEventListener("mouseup", () => { dragging = false; });
 document.addEventListener("mousemove", e => {
   if (document.pointerLockElement === canvas) { mouseDX += e.movementX; mouseDY += e.movementY; }
+  else if (dragging && phase === "play") { mouseDX += e.movementX; mouseDY += e.movementY; }
 });
 document.addEventListener("pointerlockchange", () => {
-  if (phase === "play" && document.pointerLockElement !== canvas && !isTouch) setPhase("pause");
+  if (document.pointerLockElement === canvas) { locking = false; return; }
+  // Only treat losing the lock as a pause if we actually had it.
+  if (phase === "play" && !isTouch && !locking && !dragging) setPhase("pause");
 });
 
 // touch: left half drives movement, right half looks, on-screen buttons do the rest
@@ -831,9 +863,9 @@ function finish(which) {
   $("endBody").textContent = T(which === "seal" ? "end.sealText" : "end.wakeText");
   $("endStats").textContent = T("end.stats", relics, TOTAL_RELICS, walls, TOTAL_MURALS, `${mm}:${String(ss).padStart(2, "0")}`);
   const box = $("endBtns"); box.innerHTML = "";
-  box.appendChild(btn(T("end.again"), () => { localStorage.removeItem(SAVE_KEY); newGame(); }));
+  box.appendChild(btn(T("end.again"), () => { clearStore(SAVE_KEY); newGame(); }));
   setPhase("ending");
-  localStorage.removeItem(SAVE_KEY);
+  clearStore(SAVE_KEY);
 }
 
 // ---------------------------------------------------------------------------
@@ -841,9 +873,9 @@ function finish(which) {
 // ---------------------------------------------------------------------------
 function save() {
   if (!S || S.ended) return;
-  try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* storage may be denied */ }
+  try { writeStore(SAVE_KEY, JSON.stringify(S)); } catch (e) { /* storage may be denied */ }
 }
-function hasSave() { return !!localStorage.getItem(SAVE_KEY); }
+function hasSave() { return !!readStore(SAVE_KEY); }
 
 function newGame() {
   S = freshState();
@@ -853,7 +885,7 @@ function newGame() {
 }
 function continueGame() {
   try {
-    S = Object.assign(freshState(), JSON.parse(localStorage.getItem(SAVE_KEY)));
+    S = Object.assign(freshState(), JSON.parse(readStore(SAVE_KEY)));
     S.watcher = null; S.dark = 0;
   } catch (e) { S = freshState(); }
   rebuildWorld();
@@ -944,13 +976,13 @@ function applyOpt() {
 function showPanel(name) {
   for (const p of ["mainPanel", "ctrlPanel", "optPanel"]) $(p).classList.toggle("open", p === name);
 }
-$("btnStart").onclick = () => { localStorage.removeItem(SAVE_KEY); newGame(); };
+$("btnStart").onclick = () => { clearStore(SAVE_KEY); newGame(); };
 $("btnContinue").onclick = () => continueGame();
 $("btnControls").onclick = () => showPanel("ctrlPanel");
 $("btnOptions").onclick = () => showPanel("optPanel");
 for (const b of document.querySelectorAll(".backBtn")) b.onclick = () => showPanel("mainPanel");
 $("btnResume").onclick = () => setPhase("play");
-$("btnRestart").onclick = () => { localStorage.removeItem(SAVE_KEY); newGame(); };
+$("btnRestart").onclick = () => { clearStore(SAVE_KEY); newGame(); };
 $("btnQuit").onclick = () => { save(); setPhase("menu"); showPanel("mainPanel"); $("btnContinue").style.display = hasSave() ? "" : "none"; };
 
 // ---------------------------------------------------------------------------
@@ -1022,8 +1054,21 @@ async function boot() {
   const tick = () => { bar.style.transform = `scaleX(${++n / total})`; };
 
   $("loadMsg").textContent = T("menu.loadingAssets");
-  await Promise.all(TEXTURE_FILES.map(([f, slot]) => loadTexture(f, slot).then(tick).catch(tick)));
-  await audio.init(AUDIO_FILES, () => {}).catch(() => {});
+  let missing = 0;
+  if (PROCEDURAL) {
+    missing = TEXTURE_FILES.length;
+    for (let i = 0; i < TEXTURE_FILES.length; i++) tick();
+  } else {
+    await Promise.all(TEXTURE_FILES.map(([f, slot]) =>
+      loadTexture(f, slot).then(tick).catch(() => { missing++; tick(); })));
+  }
+  if (missing) makeTextures().forEach((img, slot) => renderer.setTexture(slot, img));
+
+  $("menuArt").style.backgroundImage = PROCEDURAL
+    ? `url('${makeTitleArt()}')`
+    : "url('./assets/title_art.jpg')";
+
+  await audio.init(AUDIO_FILES, () => {}, PROCEDURAL).catch(() => {});
   tick();
 
   rebuildWorld();

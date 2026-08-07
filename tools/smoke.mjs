@@ -5,11 +5,12 @@ import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 
-const ROOT = new URL("../public/", import.meta.url).pathname;
-const MIME = { ".html": "text/html", ".js": "text/javascript", ".png": "image/png", ".mp3": "audio/mpeg", ".json": "application/json" };
+const ROOT = process.env.ASG_ROOT || new URL("../public/", import.meta.url).pathname;
+const INDEX = process.env.ASG_INDEX || "index.html";
+const MIME = { ".html": "text/html", ".js": "text/javascript", ".png": "image/png", ".mp3": "audio/mpeg", ".jpg": "image/jpeg", ".json": "application/json" };
 const server = createServer(async (req, res) => {
   const p = normalize(decodeURIComponent(req.url.split("?")[0])).replace(/^(\.\.[/\\])+/, "");
-  const f = join(ROOT, p === "/" ? "index.html" : p);
+  const f = join(ROOT, p === "/" ? INDEX : p);
   try {
     const body = await readFile(f);
     res.writeHead(200, { "content-type": MIME[extname(f)] || "application/octet-stream" });
@@ -111,8 +112,10 @@ await shot("07-ending");
 await g(() => { window.__g.S.ended = null; window.__g.setPhase("play"); });
 await page.waitForFunction(() => window.__g.phase() === "play");
 await page.keyboard.press("Tab");
-await page.waitForTimeout(120);
-check(await g(() => window.__g.phase() === "codex"), "Tab opens the codex");
+// the loop consumes key edges on its next frame, so wait for the state, not a fixed delay
+const sawCodex = await page.waitForFunction(() => window.__g.phase() === "codex", null, { timeout: 4000 })
+  .then(() => true).catch(() => false);
+check(sawCodex, "Tab opens the codex");
 check(await g(() => document.getElementById("codexBody").textContent.includes("seed")
   || document.getElementById("codexBody").textContent.length > 200), "the codex holds what was found");
 await shot("08-codex");
@@ -124,12 +127,13 @@ await g(() => { window.__g.goto(20, 16); window.__g.S.charge = 0; });
 await page.waitForTimeout(1200);
 check(await g(() => window.__g.S.dark > 0.5), "the dark clock runs once the lamp is out");
 await g(() => { window.__g.S.dark = 13; });
-await page.waitForTimeout(700);
-check(await g(() => !!window.__g.S.watcher), "the Watcher appears after the delay");
+const sawWatcher = await page.waitForFunction(() => !!window.__g.S.watcher, null, { timeout: 5000 })
+  .then(() => true).catch(() => false);
+check(sawWatcher, "the Watcher appears after the delay");
 await g(() => { const S = window.__g.S; S.watcher.x = S.x; S.watcher.z = S.z; });
-await page.waitForTimeout(300);
-check(await g(() => window.__g.S.watcher === null && window.__g.S.charge > 30),
-  "being caught wakes you at a brazier instead of ending the run");
+const caught = await page.waitForFunction(() => window.__g.S.watcher === null && window.__g.S.charge > 30,
+  null, { timeout: 5000 }).then(() => true).catch(() => false);
+check(caught, "being caught wakes you at a brazier instead of ending the run");
 
 // 7 — frame budget on the worst-case scene
 console.log("\n= performance =");

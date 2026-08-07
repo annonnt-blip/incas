@@ -1,6 +1,8 @@
 // Audio mix. Levels follow the mix contract: music sits at roughly -19 dBFS, effects at
 // -11 dBFS, and everything passes through a limiter so the true peak stays under -3 dBFS.
 
+import { synthBuffers } from "./synth.js";
+
 const MUSIC_GAIN = 0.112;   // ≈ -19 dBFS
 const SFX_GAIN   = 0.282;   // ≈ -11 dBFS
 const AMB_GAIN   = 0.150;
@@ -12,7 +14,7 @@ export class Audio {
     this.muted = false;
   }
 
-  async init(urls, onProgress) {
+  async init(urls, onProgress, procedural = false) {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return;
     this.ctx = new AC();
@@ -30,16 +32,25 @@ export class Audio {
     this.ambBus = this.ctx.createGain(); this.ambBus.gain.value = AMB_GAIN;
     this.musicBus.connect(this.limiter); this.sfxBus.connect(this.limiter); this.ambBus.connect(this.limiter);
 
+    if (procedural) {
+      this.buf = synthBuffers(this.ctx);
+      this.ready = true;
+      return;
+    }
+
     const names = Object.keys(urls);
     let done = 0;
     await Promise.all(names.map(async (n) => {
       try {
         const r = await fetch(urls[n]);
+        if (!r.ok) throw new Error(r.status);
         const ab = await r.arrayBuffer();
         this.buf[n] = await this.ctx.decodeAudioData(ab);
       } catch (e) { /* a missing clip must never take the game down */ }
       onProgress && onProgress(++done / names.length);
     }));
+    // nothing arrived — play synthesised stand-ins rather than run the ruin silent
+    if (Object.keys(this.buf).length === 0) this.buf = synthBuffers(this.ctx);
     this.ready = true;
   }
 
