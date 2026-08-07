@@ -197,6 +197,7 @@ let padPrev = {};
 addEventListener("keydown", e => {
   const c = BIND[e.code];
   if (!c) return;
+  if (c === "up" || c === "down" || c === "left" || c === "right") keyboardSeen = true;
   if (e.code === "Tab" || e.code === "Space") e.preventDefault();
   if (!held.has(c)) edge.add(c);
   held.add(c);
@@ -258,49 +259,56 @@ document.addEventListener("pointerlockchange", () => {
   if (phase === "play" && !isTouch && !locking && !dragging) setPhase("pause");
 });
 
-// touch: left half drives movement, right half looks, on-screen buttons do the rest
+// On-screen controls. These use Pointer Events, so one implementation serves touch,
+// mouse and pen: the left of the screen is a virtual stick, the right looks around.
+// They are shown on touch devices, and on any device until a movement key is seen —
+// an embedded frame may never receive key events at all, and the game must not be
+// unplayable just because the host did not give it keyboard focus.
 const isTouch = matchMedia("(hover: none)").matches || "ontouchstart" in window;
-let stick = { id: null, ox: 0, oy: 0, x: 0, y: 0 };
-let lookTouch = { id: null, lx: 0, ly: 0 };
-function bindTouch() {
+let keyboardSeen = false;
+const stick = { id: null, ox: 0, oy: 0, x: 0, y: 0 };
+const lookDrag = { id: null, lx: 0, ly: 0 };
+const showOnScreen = () => isTouch || !keyboardSeen;
+
+function releaseStick() {
+  stick.id = null; stick.x = stick.y = 0;
+  $("stick").style.opacity = 0;
+  $("stickN").style.transform = "";
+}
+
+function bindPointerControls() {
   const surf = $("touchsurf");
-  surf.addEventListener("touchstart", e => {
-    for (const t of e.changedTouches) {
-      if (t.clientX < innerWidth * 0.45 && stick.id === null) {
-        stick.id = t.identifier; stick.ox = t.clientX; stick.oy = t.clientY; stick.x = 0; stick.y = 0;
-        const n = $("stick"); n.style.left = t.clientX + "px"; n.style.top = t.clientY + "px"; n.style.opacity = 1;
-      } else if (lookTouch.id === null) {
-        lookTouch.id = t.identifier; lookTouch.lx = t.clientX; lookTouch.ly = t.clientY;
-      }
+  surf.addEventListener("pointerdown", e => {
+    try { surf.setPointerCapture(e.pointerId); } catch (err) { /* capture is a nicety */ }
+    if (e.clientX < innerWidth * 0.45 && stick.id === null) {
+      stick.id = e.pointerId; stick.ox = e.clientX; stick.oy = e.clientY; stick.x = 0; stick.y = 0;
+      const n = $("stick");
+      n.style.left = e.clientX + "px"; n.style.top = e.clientY + "px"; n.style.opacity = 1;
+    } else if (lookDrag.id === null) {
+      lookDrag.id = e.pointerId; lookDrag.lx = e.clientX; lookDrag.ly = e.clientY;
     }
     e.preventDefault();
-  }, { passive: false });
-  surf.addEventListener("touchmove", e => {
-    for (const t of e.changedTouches) {
-      if (t.identifier === stick.id) {
-        const dx = t.clientX - stick.ox, dy = t.clientY - stick.oy, R = 58;
-        const d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / R);
-        stick.x = dx / d * k; stick.y = dy / d * k;
-        $("stickN").style.transform = `translate(${stick.x * R}px, ${stick.y * R}px)`;
-      } else if (t.identifier === lookTouch.id) {
-        mouseDX += (t.clientX - lookTouch.lx) * 2.1;
-        mouseDY += (t.clientY - lookTouch.ly) * 2.1;
-        lookTouch.lx = t.clientX; lookTouch.ly = t.clientY;
-      }
+  });
+  surf.addEventListener("pointermove", e => {
+    if (e.pointerId === stick.id) {
+      const dx = e.clientX - stick.ox, dy = e.clientY - stick.oy, R = 58;
+      const d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / R);
+      stick.x = dx / d * k; stick.y = dy / d * k;
+      $("stickN").style.transform = `translate(${stick.x * R}px, ${stick.y * R}px)`;
+    } else if (e.pointerId === lookDrag.id) {
+      mouseDX += (e.clientX - lookDrag.lx) * 2.1;
+      mouseDY += (e.clientY - lookDrag.ly) * 2.1;
+      lookDrag.lx = e.clientX; lookDrag.ly = e.clientY;
     }
     e.preventDefault();
-  }, { passive: false });
+  });
   const end = e => {
-    for (const t of e.changedTouches) {
-      if (t.identifier === stick.id) {
-        stick.id = null; stick.x = stick.y = 0;
-        $("stick").style.opacity = 0; $("stickN").style.transform = "";
-      }
-      if (t.identifier === lookTouch.id) lookTouch.id = null;
-    }
+    if (e.pointerId === stick.id) releaseStick();
+    if (e.pointerId === lookDrag.id) lookDrag.id = null;
   };
-  surf.addEventListener("touchend", end);
-  surf.addEventListener("touchcancel", end);
+  surf.addEventListener("pointerup", end);
+  surf.addEventListener("pointercancel", end);
+  surf.addEventListener("lostpointercapture", end);
 }
 
 // ---------------------------------------------------------------------------
@@ -799,9 +807,14 @@ function updateHud() {
   $("objective").textContent = T(objectiveKey());
   $("reticle").style.opacity = t ? 1 : 0.35;
   // Say so plainly rather than letting the player conclude the game is broken.
-  const unfocused = !isTouch && !document.hasFocus();
-  $("focusHint").textContent = T("hud.focus");
-  $("focusHint").className = unfocused ? "show" : "";
+  const onScreenNow = $("touchsurf").style.display === "block";
+  if (onScreenNow !== showOnScreen() && phase === "play") setPhase("play");
+  // Say what to do rather than letting silence read as a broken game.
+  const hint = (!isTouch && showOnScreen()) ? T("hud.drag")
+    : (!isTouch && !document.hasFocus()) ? T("hud.focus")
+    : "";
+  $("focusHint").textContent = hint;
+  $("focusHint").className = hint ? "show" : "";
 }
 
 // ---------------------------------------------------------------------------
@@ -812,8 +825,10 @@ function setPhase(p) {
   phase = p;
   for (const id of ["menu", "codex", "reader", "pause", "ending"]) $(id).classList.toggle("open", id === p);
   $("hud").classList.toggle("open", p === "play");
-  $("touchsurf").style.display = (p === "play" && isTouch) ? "block" : "none";
-  $("touchbtns").style.display = (p === "play" && isTouch) ? "flex" : "none";
+  const onScreen = p === "play" && showOnScreen();
+  $("touchsurf").style.display = onScreen ? "block" : "none";
+  $("touchbtns").style.display = onScreen ? "flex" : "none";
+  if (!onScreen) releaseStick();
   if (p === "play") {
     audio.resume(); audio.startBeds();
     // An embedded frame does not get key events until something inside it is focused.
@@ -1061,7 +1076,7 @@ async function boot() {
   SPR = buildSprites();
   S = freshState();
   resize();
-  if (isTouch) bindTouch();
+  bindPointerControls();
   if (dev) $("dev").style.display = "block";
 
   const bar = $("loadBar");
@@ -1143,9 +1158,9 @@ if (dev) {
 }
 
 // touch buttons
-$("btnUse").addEventListener("touchstart", e => { e.preventDefault(); interact(); }, { passive: false });
-$("btnCodex").addEventListener("touchstart", e => { e.preventDefault(); openCodex(); }, { passive: false });
-$("btnPause").addEventListener("touchstart", e => { e.preventDefault(); setPhase("pause"); }, { passive: false });
+$("btnUse").addEventListener("pointerdown", e => { e.preventDefault(); interact(); });
+$("btnCodex").addEventListener("pointerdown", e => { e.preventDefault(); openCodex(); });
+$("btnPause").addEventListener("pointerdown", e => { e.preventDefault(); setPhase("pause"); });
 
 addEventListener("visibilitychange", () => { if (document.hidden && phase === "play") setPhase("pause"); });
 

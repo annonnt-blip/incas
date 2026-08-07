@@ -149,6 +149,32 @@ await page.waitForTimeout(120);
 await walk("W still walks with a gamepad connected");
 await g(() => { navigator.getGamepads = () => [null, null, null, null]; });
 
+// The mouse alone must be enough: an embedded frame may never get key events, so a
+// player who has never pressed a key gets on-screen controls that a mouse can drive.
+{
+  const mp = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
+  await mp.goto(`http://127.0.0.1:${PORT}/?dev=1`);
+  await mp.waitForFunction(() => window.__g && !document.getElementById("loading").classList.contains("open"), null, { timeout: 30000 });
+  await mp.click("#btnStart");
+  await mp.waitForTimeout(400);
+  check(await mp.evaluate(() => getComputedStyle(document.getElementById("touchsurf")).display === "block"),
+    "on-screen controls appear when no key has been pressed");
+  const from = await mp.evaluate(() => ({ x: window.__g.S.x, z: window.__g.S.z }));
+  await mp.mouse.move(200, 400);
+  await mp.mouse.down();
+  for (let i = 1; i <= 6; i++) { await mp.mouse.move(200, 400 - i * 12); await mp.waitForTimeout(90); }
+  await mp.mouse.up();
+  const to = await mp.evaluate(() => ({ x: window.__g.S.x, z: window.__g.S.z }));
+  const dragged = Math.hypot(to.x - from.x, to.z - from.z);
+  check(dragged > 0.8, `dragging the left side walks with no keyboard at all (moved ${dragged.toFixed(2)} units)`);
+  // and once a movement key proves the keyboard works, the overlay gets out of the way
+  await mp.keyboard.press("KeyW");
+  await mp.waitForTimeout(300);
+  check(await mp.evaluate(() => getComputedStyle(document.getElementById("touchsurf")).display === "none"),
+    "the overlay steps aside once the keyboard is used");
+  await mp.close();
+}
+
 // 6 — the lamp economy and the Watcher
 console.log("\n= economy =");
 await g(() => { window.__g.goto(20, 16); window.__g.S.charge = 0; });

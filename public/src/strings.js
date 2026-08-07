@@ -18,9 +18,9 @@ const en = {
   // --- controls card ---
   "ctrl.title": "Controls",
   "ctrl.move": "Move",
-  "ctrl.moveKeys": "W A S D  /  Arrow keys",
+  "ctrl.moveKeys": "W A S D  /  Arrow keys  /  drag the left side",
   "ctrl.look": "Look",
-  "ctrl.lookKeys": "Mouse  ·  drag the right half on touch",
+  "ctrl.lookKeys": "Mouse  /  drag the right side",
   "ctrl.sprint": "Hurry",
   "ctrl.sprintKeys": "Shift  /  L3",
   "ctrl.interact": "Inspect",
@@ -65,6 +65,7 @@ const en = {
   "hud.objective": "Now",
   "hud.codexHint": "Tab — codex",
   "hud.focus": "Click the game to use the keyboard",
+  "hud.drag": "Drag the left side to walk · the right side to look · W A S D works too",
   "hud.newEntry": "Codex updated",
   "hud.glyphLearned": "New light learned",
 
