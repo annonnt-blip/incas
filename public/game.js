@@ -1051,6 +1051,8 @@ if (dev) {
     phase: () => phase,
     setPhase,
     objective: () => objectiveKey(),
+    texturesLoaded: () => TEXTURE_FILES.every(([, slot]) => !!renderer.tex[slot]),
+    audioLoaded: () => Object.keys(audio.buf).length,
     // average render cost over n frames, in milliseconds
     perf(n = 60) {
       const t0 = performance.now();
